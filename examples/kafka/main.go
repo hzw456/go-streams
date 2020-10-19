@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/Shopify/sarama"
-	ext "github.com/reugn/go-streams/extension"
-	"github.com/reugn/go-streams/flow"
+	ext "github.com/hzw456/go-streams/extension"
+	"github.com/hzw456/go-streams/flow"
 )
 
 func main() {

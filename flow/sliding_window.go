@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/reugn/go-streams"
+	"github.com/hzw456/go-streams"
 )
 
 // SlidingWindow assigns elements to windows of fixed length configured by the window size parameter.

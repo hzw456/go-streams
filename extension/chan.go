@@ -1,8 +1,8 @@
 package ext
 
 import (
-	"github.com/reugn/go-streams"
-	"github.com/reugn/go-streams/flow"
+	"github.com/hzw456/go-streams"
+	"github.com/hzw456/go-streams/flow"
 )
 
 // ChanSource streams data from the input channel

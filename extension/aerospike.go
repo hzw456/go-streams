@@ -11,8 +11,8 @@ import (
 	"time"
 
 	aero "github.com/aerospike/aerospike-client-go"
-	"github.com/reugn/go-streams"
-	"github.com/reugn/go-streams/flow"
+	"github.com/hzw456/go-streams"
+	"github.com/hzw456/go-streams/flow"
 )
 
 // AerospikeProperties is the Aerospike connector configuration properties

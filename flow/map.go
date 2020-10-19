@@ -1,7 +1,7 @@
 package flow
 
 import (
-	"github.com/reugn/go-streams"
+	"github.com/hzw456/go-streams"
 )
 
 // MapFunc is a Map transformation function.

@@ -9,7 +9,7 @@ Since the `go mod` package management tool is used in this project, **Go 1.11 or
 
 ## Fork
 
-Before contributing, you need to fork [go-streams](https://github.com/reugn/go-streams) to your github repository.
+Before contributing, you need to fork [go-streams](https://github.com/hzw456/go-streams) to your github repository.
 
 ## Contribution flow
 

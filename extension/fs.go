@@ -4,9 +4,9 @@ import (
 	"bufio"
 	"os"
 
-	"github.com/reugn/go-streams"
-	"github.com/reugn/go-streams/flow"
-	"github.com/reugn/go-streams/ospkg"
+	"github.com/hzw456/go-streams"
+	"github.com/hzw456/go-streams/flow"
+	"github.com/hzw456/go-streams/ospkg"
 )
 
 // FileSource streams data from the file

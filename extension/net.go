@@ -8,8 +8,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/reugn/go-streams"
-	"github.com/reugn/go-streams/flow"
+	"github.com/hzw456/go-streams"
+	"github.com/hzw456/go-streams/flow"
 )
 
 // ConnType connection type
