@@ -5,7 +5,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/hzw456/go-streams"
@@ -15,30 +14,23 @@ import (
 // ChanSource streams data from the input channel
 type WebSocketSource struct {
 	ctx  context.Context
-	addr string
-	path string
+	url  url.URL
 	conn *websocket.Conn
 	out  chan interface{}
 }
 
-var upgrader = websocket.Upgrader{HandshakeTimeout: 200 * time.Millisecond} // use default options
-
 // NewChanSource returns a new ChanSource instance
-func NewWebSocketSource(ctx context.Context, addr, path string) (*WebSocketSource, error) {
+func NewWebSocketSource(ctx context.Context, u url.URL) (*WebSocketSource, error) {
 	out := make(chan interface{})
-	u := url.URL{Scheme: "ws", Host: addr, Path: path}
-	log.Printf("connecting to %s", u.String())
 
 	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
-	defer c.Close()
-	websocketConnection(c, out)
+	go websocketConnection(c, out)
 	source := &WebSocketSource{
 		ctx:  ctx,
-		addr: addr,
-		path: path,
+		url:  u,
 		conn: c,
 		out:  out,
 	}
@@ -58,18 +50,14 @@ func (ws *WebSocketSource) listenCtx() {
 
 // a handleConnection routine
 func websocketConnection(conn *websocket.Conn, out chan<- interface{}) {
-	done := make(chan struct{})
-	go func() {
-		defer close(done)
-		for {
-			_, message, err := conn.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				break
-			}
-			out <- string(message)
+	for {
+		_, message, err := conn.ReadMessage()
+		if err != nil {
+			log.Println("read:", err)
+			break
 		}
-	}()
+		out <- string(message)
+	}
 	log.Printf("Closing a webSocketSource connection %v", conn)
 	conn.Close()
 }
@@ -95,10 +83,8 @@ type WebSocketSink struct {
 
 // var upgrader = websocket.Upgrader{HandshakeTimeout: 200 * time.Millisecond} // use default options
 // NewKafkaSink returns a new KafkaSink instance
-func NewWebSocketSink(w http.ResponseWriter, r *http.Request) (*WebSocketSink, error) {
-
+func NewWebSocketSink(w http.ResponseWriter, r *http.Request, upgrader *websocket.Upgrader) (*WebSocketSink, error) {
 	conn, err := upgrader.Upgrade(w, r, nil)
-	defer conn.Close()
 	if err != nil {
 		return nil, err
 	}
