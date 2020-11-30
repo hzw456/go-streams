@@ -107,12 +107,14 @@ func (ws *WebSocketSink) init() {
 			err := ws.conn.WriteMessage(websocket.TextMessage, msgBt)
 			if err != nil {
 				log.Println("write:", err)
+				break
 			}
 		case string:
 			msgBt := []byte(msg.(string))
 			err := ws.conn.WriteMessage(websocket.TextMessage, msgBt)
 			if err != nil {
 				log.Println("write:", err)
+				break
 			}
 		default:
 			log.Printf("Unsupported message type %v", m)
