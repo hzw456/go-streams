@@ -2,6 +2,7 @@ package ext
 
 import (
 	"context"
+	"errors"
 	"log"
 	"os"
 	"os/signal"
@@ -15,67 +16,120 @@ import (
 
 // KafkaSource connector
 type KafkaSource struct {
-	consumer  sarama.ConsumerGroup
-	handler   sarama.ConsumerGroupHandler
-	topics    []string
-	out       chan interface{}
-	ctx       context.Context
-	cancelCtx context.CancelFunc
-	wg        *sync.WaitGroup
+	consumerGroup sarama.ConsumerGroup
+	handler       sarama.ConsumerGroupHandler
+	consumer      sarama.Consumer
+	partitions    []int32
+	topics        []string
+	out           chan interface{}
+	ctx           context.Context
+	cancelCtx     context.CancelFunc
+	wg            *sync.WaitGroup
 }
 
 // NewKafkaSource returns a new KafkaSource instance
 func NewKafkaSource(ctx context.Context, addrs []string, groupID string,
 	config *sarama.Config, topics ...string) *KafkaSource {
-	consumerGroup, err := sarama.NewConsumerGroup(addrs, groupID, config)
-	streams.Check(err)
+	if len(topics) == 0 {
+		streams.Check(errors.New("topic is null"))
+	}
 	out := make(chan interface{})
 	cctx, cancel := context.WithCancel(ctx)
-
-	sink := &KafkaSource{
-		consumerGroup,
-		&GroupHandler{make(chan struct{}), out},
-		topics,
-		out,
-		cctx,
-		cancel,
-		&sync.WaitGroup{},
+	var sink KafkaSource
+	sink.wg = &sync.WaitGroup{}
+	sink.handler = &GroupHandler{make(chan struct{}), out}
+	sink.topics = topics
+	sink.out = out
+	sink.cancelCtx = cancel
+	sink.ctx = cctx
+	isLowVer := false
+	if ver, _ := sarama.ParseKafkaVersion("0.10.2.0"); config.Version.IsAtLeast(ver) {
+		consumerGroup, err := sarama.NewConsumerGroup(addrs, groupID, config)
+		streams.Check(err)
+		sink.consumerGroup = consumerGroup
+	} else {
+		consumer, err := sarama.NewConsumer(addrs, config)
+		streams.Check(err)
+		sink.consumer = consumer
+		partitions, err := consumer.Partitions(topics[0])
+		streams.Check(err)
+		sink.partitions = partitions
+		isLowVer = true
 	}
 
-	go sink.init()
-	return sink
+	go sink.init(isLowVer)
+	return &sink
 }
 
-func (ks *KafkaSource) claimLoop() {
+func (ks *KafkaSource) claimLoop(isLow bool) {
 	ks.wg.Add(1)
 	defer func() {
 		ks.wg.Done()
 		log.Printf("Exiting kafka claimLoop")
 	}()
-	for {
-		handler := ks.handler.(*GroupHandler)
-		// `Consume` should be called inside an infinite loop, when a
-		// server-side rebalance happens, the consumer session will need to be
-		// recreated to get the new claims
-		if err := ks.consumer.Consume(ks.ctx, ks.topics, handler); err != nil {
-			log.Printf("Kafka consumer.Consume failed with: %v", err)
+	if isLow {
+		sarama.Logger = log.New(os.Stderr, "[sarama]", log.LstdFlags)
+		for _, partition := range ks.partitions {
+			go func(partition int32) {
+				partitionConsumer, err := ks.consumer.ConsumePartition(ks.topics[0], partition, sarama.OffsetNewest)
+				if err != nil {
+					log.Printf("Kafka consumer.Consume failed with: %v", err)
+					return
+				}
+				defer func() {
+					ks.wg.Done()
+					if err := partitionConsumer.Close(); err != nil {
+						log.Fatalln(err)
+					}
+				}()
+			ConsumerLoop:
+				for {
+					select {
+					case err := <-partitionConsumer.Errors():
+						if err != nil {
+							log.Fatalln("error:", err)
+						}
+					case msg := <-partitionConsumer.Messages():
+						if msg != nil {
+							ks.out <- msg
+						}
+					case <-ks.ctx.Done():
+						log.Println("stop consuming partition:", partition)
+						break ConsumerLoop
+					}
+				}
+			}(partition)
 		}
-
 		select {
 		case <-ks.ctx.Done():
 			return
 		default:
 		}
+	} else {
+		for {
+			handler := ks.handler.(*GroupHandler)
+			// `Consume` should be called inside an infinite loop, when a
+			// server-side rebalance happens, the consumer session will need to be
+			// recreated to get the new claims
+			if err := ks.consumerGroup.Consume(ks.ctx, ks.topics, handler); err != nil {
+				log.Printf("Kafka consumer.Consume failed with: %v", err)
+			}
 
-		handler.ready = make(chan struct{})
+			select {
+			case <-ks.ctx.Done():
+				return
+			default:
+			}
+			handler.ready = make(chan struct{})
+		}
 	}
 }
 
 // init starts the main loop
-func (ks *KafkaSource) init() {
+func (ks *KafkaSource) init(isLow bool) {
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-	go ks.claimLoop()
+	go ks.claimLoop(isLow)
 
 	select {
 	case <-sigchan:
