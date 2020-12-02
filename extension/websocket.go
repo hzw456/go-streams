@@ -23,10 +23,10 @@ type WebSocketSource struct {
 }
 
 // NewChanSource returns a new ChanSource instance
-func NewWebSocketSource(cctx context.Context, cancel context.CancelFunc, u url.URL) (*WebSocketSource, error) {
-	out := make(chan interface{})
+func NewWebSocketSource(cctx context.Context, cancel context.CancelFunc, u url.URL, dialer *websocket.Dialer) (*WebSocketSource, error) {
+	out := make(chan interface{}, 1000)
 
-	c, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
+	c, _, err := dialer.Dial(u.String(), nil)
 	if err != nil {
 		log.Fatal("dial:", err)
 	}
