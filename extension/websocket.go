@@ -133,7 +133,6 @@ func (ws *WebSocketSink) init() {
 		}
 	}
 	log.Printf("Closing websocket")
-	close(ws.in)
 	ws.conn.Close()
 }
 
