@@ -5,11 +5,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hzw456/go-streams"
-
 	"github.com/go-redis/redis"
 	ext "github.com/hzw456/go-streams/extension"
 	"github.com/hzw456/go-streams/flow"
+	"github.com/hzw456/go-streams/util"
 )
 
 //docker exec -it pubsub bash
@@ -32,7 +31,7 @@ func main() {
 	}
 
 	source, err := ext.NewRedisSource(ctx, config, "test")
-	streams.Check(err)
+	util.Check(err)
 	flow1 := flow.NewMap(toUpper, 1)
 	sink := ext.NewRedisSink(config, "test2")
 

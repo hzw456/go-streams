@@ -1,4 +1,4 @@
-package ext
+package extension
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"github.com/Shopify/sarama"
 	"github.com/hzw456/go-streams"
 	"github.com/hzw456/go-streams/flow"
+	"github.com/hzw456/go-streams/util"
 )
 
 // KafkaSource connector
@@ -31,7 +32,7 @@ type KafkaSource struct {
 func NewKafkaSource(ctx context.Context, addrs []string, groupID string,
 	config *sarama.Config, topics ...string) *KafkaSource {
 	if len(topics) == 0 {
-		streams.Check(errors.New("topic is null"))
+		util.Check(errors.New("topic is null"))
 	}
 	out := make(chan interface{})
 	cctx, cancel := context.WithCancel(ctx)
@@ -45,14 +46,14 @@ func NewKafkaSource(ctx context.Context, addrs []string, groupID string,
 	isLowVer := false
 	if ver, _ := sarama.ParseKafkaVersion("0.10.2.0"); config.Version.IsAtLeast(ver) {
 		consumerGroup, err := sarama.NewConsumerGroup(addrs, groupID, config)
-		streams.Check(err)
+		util.Check(err)
 		sink.consumerGroup = consumerGroup
 	} else {
 		consumer, err := sarama.NewConsumer(addrs, config)
-		streams.Check(err)
+		util.Check(err)
 		sink.consumer = consumer
 		partitions, err := consumer.Partitions(topics[0])
-		streams.Check(err)
+		util.Check(err)
 		sink.partitions = partitions
 		isLowVer = true
 	}
@@ -65,7 +66,7 @@ func (ks *KafkaSource) claimLoop(isLow bool) {
 	ks.wg.Add(1)
 	defer func() {
 		ks.wg.Done()
-		log.Printf("Exiting kafka claimLoop")
+		log.Printf("Exiting the Kafka claimLoop")
 	}()
 	if isLow {
 		sarama.Logger = log.New(os.Stderr, "[sarama]", log.LstdFlags)
@@ -137,7 +138,7 @@ func (ks *KafkaSource) init(isLow bool) {
 	case <-ks.ctx.Done():
 	}
 
-	log.Printf("Closing kafka consumer")
+	log.Printf("Closing the Kafka consumer")
 	ks.wg.Wait()
 	close(ks.out)
 	ks.consumer.Close()
@@ -199,7 +200,7 @@ type KafkaSink struct {
 // NewKafkaSink returns a new KafkaSink instance
 func NewKafkaSink(addrs []string, config *sarama.Config, topic string) *KafkaSink {
 	producer, err := sarama.NewSyncProducer(addrs, config)
-	streams.Check(err)
+	util.Check(err)
 	sink := &KafkaSink{
 		producer,
 		topic,
@@ -232,7 +233,7 @@ func (ks *KafkaSink) init() {
 			log.Printf("Unsupported message type %v", m)
 		}
 	}
-	log.Printf("Closing kafka producer")
+	log.Printf("Closing the Kafka producer")
 	ks.producer.Close()
 }
 

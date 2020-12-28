@@ -6,9 +6,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/hzw456/go-streams"
 	ext "github.com/hzw456/go-streams/extension"
 	"github.com/hzw456/go-streams/flow"
+	"github.com/hzw456/go-streams/util"
 )
 
 // Test producer: nc -u 127.0.0.1 3434
@@ -25,10 +25,10 @@ func main() {
 	}()
 
 	source, err := ext.NewNetSource(ctx, ext.UDP, "127.0.0.1:3434")
-	streams.Check(err)
+	util.Check(err)
 	flow1 := flow.NewMap(toUpper, 1)
 	sink, err := ext.NewNetSink(ext.UDP, "127.0.0.1:3535")
-	streams.Check(err)
+	util.Check(err)
 
 	source.Via(flow1).To(sink)
 }

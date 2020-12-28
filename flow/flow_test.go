@@ -8,10 +8,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/hzw456/go-streams"
-
 	ext "github.com/hzw456/go-streams/extension"
 	"github.com/hzw456/go-streams/flow"
+	"github.com/hzw456/go-streams/util"
 )
 
 var toUpper = func(in interface{}) interface{} {
@@ -111,12 +110,12 @@ func TestFlowUtil(t *testing.T) {
 
 func TestQueue(t *testing.T) {
 	queue := &flow.PriorityQueue{}
-	heap.Push(queue, flow.NewItem(1, streams.NowNano(), 0))
+	heap.Push(queue, flow.NewItem(1, util.NowNano(), 0))
 	heap.Push(queue, flow.NewItem(2, 1234, 0))
-	heap.Push(queue, flow.NewItem(3, streams.NowNano(), 0))
+	heap.Push(queue, flow.NewItem(3, util.NowNano(), 0))
 	queue.Swap(0, 1)
 	head := queue.Head()
-	queue.Update(head, streams.NowNano())
+	queue.Update(head, util.NowNano())
 	first := heap.Pop(queue).(*flow.Item)
 	assertEqual(t, first.Msg.(int), 2)
 }

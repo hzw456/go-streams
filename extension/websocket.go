@@ -1,142 +1,149 @@
-package ext
+package extension
 
-import (
-	"context"
-	"log"
-	"net/http"
-	"net/url"
-	"sync"
+// import (
+// 	"context"
+// 	"log"
+// 	"os"
+// 	"os/signal"
+// 	"syscall"
 
-	"github.com/gorilla/websocket"
-	"github.com/hzw456/go-streams"
-	"github.com/hzw456/go-streams/flow"
-)
+// 	"github.com/gorilla/websocket"
+// 	"github.com/hzw456/go-streams"
+// 	"github.com/hzw456/go-streams/flow"
+// )
 
-// ChanSource streams data from the input channel
-type WebSocketSource struct {
-	url       url.URL
-	conn      *websocket.Conn
-	out       chan interface{}
-	ctx       context.Context
-	cancelCtx context.CancelFunc
-	wg        *sync.WaitGroup
-}
+// // Message represents a message from peer
+// type Message struct {
+// 	// The message types are defined in RFC 6455, section 11.8.
+// 	MsgType int
+// 	Payload []byte
+// }
 
-// NewChanSource returns a new ChanSource instance
-func NewWebSocketSource(cctx context.Context, cancel context.CancelFunc, u url.URL, dialer *websocket.Dialer) (*WebSocketSource, error) {
-	out := make(chan interface{}, 1000)
+// // WebSocketSource connector
+// type WebSocketSource struct {
+// 	ctx        context.Context
+// 	connection *websocket.Conn
+// 	out        chan interface{}
+// }
 
-	c, _, err := dialer.Dial(u.String(), nil)
-	if err != nil {
-		log.Fatal("dial:", err)
-	}
+// // NewWebSocketSource returns a new WebSocketSource instance
+// func NewWebSocketSource(ctx context.Context, url string) (*WebSocketSource, error) {
+// 	return NewWebSocketSourceWithDialer(ctx, url, websocket.DefaultDialer)
+// }
 
-	source := &WebSocketSource{
-		ctx:       cctx,
-		url:       u,
-		conn:      c,
-		out:       out,
-		cancelCtx: cancel,
-		wg:        &sync.WaitGroup{},
-	}
-	go source.Connect()
-	return source, nil
-}
+// // NewWebSocketSourceWithDialer returns a new WebSocketSource instance
+// func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSource, error) {
+// 	conn, _, err := dialer.Dial(url, nil)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	source := &WebSocketSource{
+// 		ctx:        ctx,
+// 		connection: conn,
+// 		out:        make(chan interface{}),
+// 	}
 
-// a handleConnection routine
-func (ws *WebSocketSource) Connect() {
-	go func() {
-		for {
-			_, message, err := ws.conn.ReadMessage()
-			if err != nil {
-				log.Println("read:", err)
-				break
-			}
-			ws.out <- string(message)
-		}
-	}()
-	select {
-	case <-ws.ctx.Done():
-		if ws.conn != nil {
-			ws.conn.Close()
-		}
-		close(ws.out)
-	}
-	log.Printf("Closing a webSocketSource connection")
-}
+// 	go source.init()
+// 	return source, nil
+// }
 
-// Via streams data through the given flow
-func (ws *WebSocketSource) Via(_flow streams.Flow) streams.Flow {
-	flow.DoStream(ws, _flow)
-	return _flow
-}
+// // init starts the main loop
+// func (wsock *WebSocketSource) init() {
+// 	sigchan := make(chan os.Signal, 1)
+// 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
 
-// Out returns an output channel for sending data
-func (ws *WebSocketSource) Out() <-chan interface{} {
-	return ws.out
-}
+// loop:
+// 	for {
+// 		select {
+// 		case <-sigchan:
+// 			break loop
+// 		case <-wsock.ctx.Done():
+// 			break loop
+// 		default:
+// 			t, msg, err := wsock.connection.ReadMessage()
+// 			if err != nil {
+// 				log.Printf("Error on ws ReadMessage: %v", err)
+// 			} else {
+// 				wsock.out <- Message{
+// 					MsgType: t,
+// 					Payload: msg,
+// 				}
+// 				// exit on CloseMessage
+// 				if t == websocket.CloseMessage {
+// 					break loop
+// 				}
+// 			}
+// 		}
+// 	}
 
-// KafkaSink connector
-type WebSocketSink struct {
-	w         http.ResponseWriter
-	r         *http.Request
-	conn      *websocket.Conn
-	in        chan interface{}
-	ctx       context.Context
-	cancelCtx context.CancelFunc
-	wg        *sync.WaitGroup
-}
+// 	log.Print("Closing the WebSocketSource connection")
+// 	close(wsock.out)
+// 	wsock.connection.Close()
+// }
 
-// var upgrader = websocket.Upgrader{HandshakeTimeout: 200 * time.Millisecond} // use default options
-// NewKafkaSink returns a new KafkaSink instance
-func NewWebSocketSink(cctx context.Context, cancel context.CancelFunc, w http.ResponseWriter, r *http.Request, upgrader *websocket.Upgrader) (*WebSocketSink, error) {
-	conn, err := upgrader.Upgrade(w, r, nil)
-	if err != nil {
-		return nil, err
-	}
-	sink := &WebSocketSink{
-		w:         w,
-		r:         r,
-		conn:      conn,
-		in:        make(chan interface{}),
-		ctx:       cctx,
-		cancelCtx: cancel,
-		wg:        &sync.WaitGroup{},
-	}
+// // Via streams data through the given flow
+// func (wsock *WebSocketSource) Via(_flow streams.Flow) streams.Flow {
+// 	flow.DoStream(wsock, _flow)
+// 	return _flow
+// }
 
-	go sink.init()
-	return sink, nil
-}
+// // Out returns an output channel for sending data
+// func (wsock *WebSocketSource) Out() <-chan interface{} {
+// 	return wsock.out
+// }
 
-// init starts the main loop
-func (ws *WebSocketSink) init() {
-	for msg := range ws.in {
-		switch m := msg.(type) {
-		case []byte:
-			msgBt := msg.([]byte)
-			err := ws.conn.WriteMessage(websocket.TextMessage, msgBt)
-			if err != nil {
-				log.Println("write:", err)
-				ws.cancelCtx()
-				return
-			}
-		case string:
-			msgBt := []byte(msg.(string))
-			err := ws.conn.WriteMessage(websocket.TextMessage, msgBt)
-			if err != nil {
-				log.Println("write:", err)
-				ws.cancelCtx()
-				return
-			}
-		default:
-			log.Printf("Unsupported message type %v", m)
-		}
-	}
-	log.Printf("Closing websocket")
-	ws.conn.Close()
-}
+// // WebSocketSink connector
+// type WebSocketSink struct {
+// 	ctx        context.Context
+// 	connection *websocket.Conn
+// 	in         chan interface{}
+// }
 
-// In returns an input channel for receiving data
-func (ws *WebSocketSink) In() chan<- interface{} {
-	return ws.in
-}
+// // NewWebSocketSink returns a new WebSocketSink instance
+// func NewWebSocketSink(ctx context.Context, url string) (*WebSocketSink, error) {
+// 	return NewWebSocketSinkWithDialer(ctx, url, websocket.DefaultDialer)
+// }
+
+// // NewWebSocketSinkWithDialer returns a new WebSocketSink instance
+// func NewWebSocketSinkWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSink, error) {
+// 	conn, _, err := dialer.Dial(url, nil)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+
+// 	sink := &WebSocketSink{
+// 		ctx:        ctx,
+// 		connection: conn,
+// 		in:         make(chan interface{}),
+// 	}
+
+// 	go sink.init()
+// 	return sink, nil
+// }
+
+// // init starts the main loop
+// func (wsock *WebSocketSink) init() {
+// 	for msg := range wsock.in {
+// 		var err error
+// 		switch m := msg.(type) {
+// 		case Message:
+// 			err = wsock.connection.WriteMessage(m.MsgType, m.Payload)
+// 		case string:
+// 			err = wsock.connection.WriteMessage(websocket.TextMessage, []byte(m))
+// 		case []byte:
+// 			err = wsock.connection.WriteMessage(websocket.BinaryMessage, m)
+// 		default:
+// 			log.Printf("WebSocketSink Unsupported message type %v", m)
+// 		}
+// 		if err != nil {
+// 			log.Printf("Error on ws WriteMessage: %v", err)
+// 		}
+// 	}
+// 	log.Print("Closing the WebSocketSink connection")
+// 	wsock.connection.Close()
+// }
+
+// // In returns an input channel for receiving data
+// func (wsock *WebSocketSink) In() chan<- interface{} {
+// 	return wsock.in
+// }
