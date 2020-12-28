@@ -131,7 +131,7 @@ func (wsock *WebSocketSink) init() {
 		case string:
 			err = wsock.connection.WriteMessage(websocket.TextMessage, []byte(m))
 		case []byte:
-			err = wsock.connection.WriteMessage(websocket.BinaryMessage, m)
+			err = wsock.connection.WriteMessage(websocket.TextMessage, m)
 		default:
 			log.Printf("WebSocketSink Unsupported message type %v", m)
 		}
@@ -141,6 +141,19 @@ func (wsock *WebSocketSink) init() {
 	}
 	log.Print("Closing the WebSocketSink connection")
 	wsock.connection.Close()
+}
+
+// var upgrader = websocket.Upgrader{HandshakeTimeout: 200 * time.Millisecond} // use default options
+// NewKafkaSink returns a new KafkaSink instance
+func NewWebSocketSinkWithWriter(ctx context.Context, conn *websocket.Conn) (*WebSocketSink, error) {
+	sink := &WebSocketSink{
+		connection: conn,
+		in:         make(chan interface{}),
+		ctx:        ctx,
+	}
+
+	go sink.init()
+	return sink, nil
 }
 
 // In returns an input channel for receiving data
