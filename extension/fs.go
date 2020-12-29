@@ -78,7 +78,7 @@ func (fs *FileSink) init() {
 		util.Check(err)
 		defer file.Close()
 		for elem := range fs.in {
-			_, err = file.WriteString(elem.(string))
+			_, err = file.WriteString(elem.(string) + "\n")
 			util.Check(err)
 		}
 	}()
