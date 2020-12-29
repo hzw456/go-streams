@@ -82,3 +82,25 @@ func Merge(outlets ...streams.Flow) streams.Flow {
 
 	return merged
 }
+
+func SideOutput(outlet streams.Outlet, cond func(interface{}) string, OutputTag ...string) map[string]streams.Flow {
+	var streamMap map[string]streams.Flow
+	for _, v := range OutputTag {
+		streamMap[v] = NewPassThrough()
+	}
+
+	go func() {
+		for elem := range outlet.Out() {
+			for _, v := range OutputTag {
+				if cond(elem) == v {
+					streamMap[v].In() <- elem
+				}
+			}
+		}
+		for _, v := range OutputTag {
+			close(streamMap[v].In())
+		}
+	}()
+
+	return streamMap
+}
