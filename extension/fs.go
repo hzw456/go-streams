@@ -7,7 +7,6 @@ import (
 	"github.com/hzw456/go-streams"
 	"github.com/hzw456/go-streams/flow"
 	"github.com/hzw456/go-streams/util"
-	"github.com/hzw456/go-streams/util/ospkg"
 )
 
 // FileSource streams data from the file
@@ -28,22 +27,9 @@ func (fs *FileSource) init() {
 		file, err := os.Open(fs.fileName)
 		util.Check(err)
 		defer file.Close()
-		reader := bufio.NewReader(file)
-		for {
-			l, isPrefix, err := reader.ReadLine()
-			if err != nil {
-				close(fs.in)
-				break
-			}
-
-			var msg string
-			if isPrefix {
-				msg = string(l)
-			} else {
-				msg = string(l) + ospkg.NewLine
-			}
-
-			fs.in <- msg
+		scanner := bufio.NewScanner(file)
+		for scanner.Scan() {
+			fs.in <- scanner.Text()
 		}
 	}()
 }
