@@ -10,6 +10,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hzw456/go-streams"
 	"github.com/hzw456/go-streams/flow"
+	"github.com/hzw456/go-streams/util"
 )
 
 // Message represents a message from peer
@@ -63,6 +64,7 @@ loop:
 			t, msg, err := wsock.connection.ReadMessage()
 			if err != nil {
 				log.Printf("Error on ws ReadMessage: %v", err)
+				util.Check(err)
 			} else {
 				wsock.out <- Message{
 					MsgType: t,
