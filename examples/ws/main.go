@@ -121,10 +121,10 @@ func main() {
 	time.Sleep(time.Millisecond * 500)
 
 	url := "ws://127.0.0.1:8080/ws"
-	source, err := ext.NewWebSocketSource(ctx, url)
+	source, _, err := ext.NewWebSocketSource(ctx, url)
 	util.Check(err)
 	flow1 := flow.NewMap(appendAsterix, 1)
-	sink, err := ext.NewWebSocketSink(ctx, url)
+	sink, _, err := ext.NewWebSocketSink(ctx, url)
 	util.Check(err)
 
 	source.Via(flow1).To(sink)

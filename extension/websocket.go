@@ -10,7 +10,6 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/hzw456/go-streams"
 	"github.com/hzw456/go-streams/flow"
-	"github.com/hzw456/go-streams/util"
 )
 
 // Message represents a message from peer
@@ -25,23 +24,19 @@ type WebSocketSource struct {
 	ctx        context.Context
 	connection *websocket.Conn
 	out        chan interface{}
+	errs       chan error
 }
 
 // NewWebSocketSource returns a new WebSocketSource instance
-func NewWebSocketSource(ctx context.Context, url string) (*WebSocketSource, error) {
+func NewWebSocketSource(ctx context.Context, url string) (*WebSocketSource, chan error, error) {
 	return NewWebSocketSourceWithDialer(ctx, url, websocket.DefaultDialer)
 }
 
 // NewWebSocketSourceWithDialer returns a new WebSocketSource instance
-func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSource, error) {
-	defer func() {
-		if r := recover(); r != nil {
-			panic(r)
-		}
-	}()
+func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSource, chan error, error) {
 	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	source := &WebSocketSource{
 		ctx:        ctx,
@@ -49,7 +44,7 @@ func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *webso
 		out:        make(chan interface{}),
 	}
 	go source.init()
-	return source, nil
+	return source, source.errs, nil
 }
 
 // init starts the main loop
@@ -68,7 +63,7 @@ loop:
 			t, msg, err := wsock.connection.ReadMessage()
 			if err != nil {
 				log.Printf("Error on ws ReadMessage: %v", err)
-				util.Check(err)
+				wsock.errs <- err
 			} else {
 				wsock.out <- Message{
 					MsgType: t,
@@ -103,28 +98,29 @@ type WebSocketSink struct {
 	ctx        context.Context
 	connection *websocket.Conn
 	in         chan interface{}
+	errs       chan error
 }
 
 // NewWebSocketSink returns a new WebSocketSink instance
-func NewWebSocketSink(ctx context.Context, url string) (*WebSocketSink, error) {
+func NewWebSocketSink(ctx context.Context, url string) (*WebSocketSink, chan error, error) {
 	return NewWebSocketSinkWithDialer(ctx, url, websocket.DefaultDialer)
 }
 
 // NewWebSocketSinkWithDialer returns a new WebSocketSink instance
-func NewWebSocketSinkWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSink, error) {
+func NewWebSocketSinkWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSink, chan error, error) {
 	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	sink := &WebSocketSink{
 		ctx:        ctx,
 		connection: conn,
 		in:         make(chan interface{}),
+		errs:       make(chan error),
 	}
-
 	go sink.init()
-	return sink, nil
+	return sink, sink.errs, nil
 }
 
 // init starts the main loop
