@@ -34,6 +34,11 @@ func NewWebSocketSource(ctx context.Context, url string) (*WebSocketSource, erro
 
 // NewWebSocketSourceWithDialer returns a new WebSocketSource instance
 func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSource, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			panic(r)
+		}
+	}()
 	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
 		return nil, err
@@ -43,7 +48,6 @@ func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *webso
 		connection: conn,
 		out:        make(chan interface{}),
 	}
-
 	go source.init()
 	return source, nil
 }
@@ -147,6 +151,11 @@ func (wsock *WebSocketSink) init() {
 
 // NewKafkaSink returns a new KafkaSink instance
 func NewWebSocketSinkWithConn(ctx context.Context, conn *websocket.Conn) (*WebSocketSink, error) {
+	defer func() {
+		if r := recover(); r != nil {
+			panic(r)
+		}
+	}()
 	sink := &WebSocketSink{
 		connection: conn,
 		in:         make(chan interface{}),
