@@ -5,7 +5,7 @@ import (
 )
 
 // MapFunc is a Map transformation function.
-type MapFunc func(interface{}) interface{}
+type MapFunc func(interface{}) (interface{}, error)
 
 // Map takes one element and produces one element.
 //
@@ -19,6 +19,7 @@ type Map struct {
 	in          chan interface{}
 	out         chan interface{}
 	parallelism uint
+	errChan     chan error
 }
 
 // Verify Map satisfies the Flow interface.
@@ -27,12 +28,13 @@ var _ streams.Flow = (*Map)(nil)
 // NewMap returns a new Map instance.
 // mapFunc is the Map transformation function.
 // parallelism is the flow parallelism factor. In case the events order matters, use parallelism = 1.
-func NewMap(mapFunc MapFunc, parallelism uint) *Map {
+func NewMap(mapFunc MapFunc, parallelism uint, errChan chan error) *Map {
 	_map := &Map{
 		mapFunc,
 		make(chan interface{}),
 		make(chan interface{}),
 		parallelism,
+		errChan,
 	}
 	go _map.doStream()
 	return _map
@@ -72,7 +74,11 @@ func (m *Map) doStream() {
 		sem <- struct{}{}
 		go func(e interface{}) {
 			defer func() { <-sem }()
-			trans := m.MapF(e)
+			trans, err := m.MapF(e)
+			if err != nil {
+				m.errChan <- err
+				return
+			}
 			m.out <- trans
 		}(elem)
 	}

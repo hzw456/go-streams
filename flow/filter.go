@@ -5,7 +5,7 @@ import (
 )
 
 // FilterFunc is a filter predicate function.
-type FilterFunc func(interface{}) bool
+type FilterFunc func(interface{}) (bool, error)
 
 // Filter filters the incoming elements using a predicate.
 // If the predicate returns true the element is passed downstream,
@@ -21,6 +21,7 @@ type Filter struct {
 	in          chan interface{}
 	out         chan interface{}
 	parallelism uint
+	ErrChan     chan error
 }
 
 // Verify Filter satisfies the Flow interface.
@@ -29,12 +30,13 @@ var _ streams.Flow = (*Filter)(nil)
 // NewFilter returns a new Filter instance.
 // filterFunc is the filter predicate function.
 // parallelism is the flow parallelism factor. In case the events order matters, use parallelism = 1.
-func NewFilter(filterFunc FilterFunc, parallelism uint) *Filter {
+func NewFilter(filterFunc FilterFunc, parallelism uint, errChan chan error) *Filter {
 	filter := &Filter{
 		filterFunc,
 		make(chan interface{}),
 		make(chan interface{}),
 		parallelism,
+		errChan,
 	}
 	go filter.doStream()
 	return filter
@@ -75,7 +77,12 @@ func (f *Filter) doStream() {
 		sem <- struct{}{}
 		go func(e interface{}) {
 			defer func() { <-sem }()
-			if f.FilterF(e) {
+			ok, err := f.FilterF(e)
+			if err != nil {
+				f.ErrChan <- err
+				return
+			}
+			if ok {
 				f.out <- e
 			}
 		}(elem)

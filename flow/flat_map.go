@@ -5,7 +5,7 @@ import (
 )
 
 // FlatMapFunc is a FlatMap transformation function.
-type FlatMapFunc func(interface{}) []interface{}
+type FlatMapFunc func(interface{}) ([]interface{}, error)
 
 // FlatMap takes one element and produces zero, one, or more elements.
 //
@@ -19,6 +19,7 @@ type FlatMap struct {
 	in          chan interface{}
 	out         chan interface{}
 	parallelism uint
+	errChan     chan error
 }
 
 // Verify FlatMap satisfies the Flow interface.
@@ -27,12 +28,13 @@ var _ streams.Flow = (*FlatMap)(nil)
 // NewFlatMap returns a new FlatMap instance.
 // flatMapFunc is the FlatMap transformation function.
 // parallelism is the flow parallelism factor. In case the events order matters, use parallelism = 1.
-func NewFlatMap(flatMapFunc FlatMapFunc, parallelism uint) *FlatMap {
+func NewFlatMap(flatMapFunc FlatMapFunc, parallelism uint, errChan chan error) *FlatMap {
 	flatMap := &FlatMap{
 		flatMapFunc,
 		make(chan interface{}),
 		make(chan interface{}),
 		parallelism,
+		errChan,
 	}
 	go flatMap.doStream()
 	return flatMap
@@ -72,7 +74,11 @@ func (fm *FlatMap) doStream() {
 		sem <- struct{}{}
 		go func(e interface{}) {
 			defer func() { <-sem }()
-			trans := fm.FlatMapF(e)
+			trans, err := fm.FlatMapF(e)
+			if err != nil {
+				fm.errChan <- err
+				return
+			}
 			for _, item := range trans {
 				fm.out <- item
 			}

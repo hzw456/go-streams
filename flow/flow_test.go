@@ -13,28 +13,28 @@ import (
 	"github.com/hzw456/go-streams/util"
 )
 
-var toUpper = func(in interface{}) interface{} {
+var toUpper = func(in interface{}) (interface{}, error) {
 	msg := in.(string)
-	return strings.ToUpper(msg)
+	return strings.ToUpper(msg), nil
 }
 
-var appendAsterix = func(in interface{}) []interface{} {
+var appendAsterix = func(in interface{}) ([]interface{}, error) {
 	arr := in.([]interface{})
 	rt := make([]interface{}, len(arr))
 	for i, item := range arr {
 		msg := item.(string)
 		rt[i] = msg + "*"
 	}
-	return rt
+	return rt, nil
 }
 
-var flatten = func(in interface{}) []interface{} {
-	return in.([]interface{})
+var flatten = func(in interface{}) ([]interface{}, error) {
+	return in.([]interface{}), nil
 }
 
-var filterA = func(in interface{}) bool {
+var filterA = func(in interface{}) (bool, error) {
 	msg := in.(string)
-	return msg != "a"
+	return msg != "a", nil
 }
 
 func ingest(source []string, in chan interface{}) {
@@ -51,11 +51,11 @@ func deferClose(in chan interface{}, d time.Duration) {
 func TestFlow(t *testing.T) {
 	in := make(chan interface{})
 	out := make(chan interface{})
-
+	errChan := make(chan error)
 	source := ext.NewChanSource(in)
-	flow1 := flow.NewMap(toUpper, 1)
-	flow2 := flow.NewFlatMap(appendAsterix, 1)
-	flow3 := flow.NewFlatMap(flatten, 1)
+	flow1 := flow.NewMap(toUpper, 1, errChan)
+	flow2 := flow.NewFlatMap(appendAsterix, 1, errChan)
+	flow3 := flow.NewFlatMap(flatten, 1, errChan)
 	throttler := flow.NewThrottler(10, time.Second*1, 50, flow.Backpressure)
 	slidingWindow := flow.NewSlidingWindow(time.Second*2, time.Second*2)
 	tumblingWindow := flow.NewTumblingWindow(time.Second * 1)
@@ -85,10 +85,10 @@ func TestFlow(t *testing.T) {
 func TestFlowUtil(t *testing.T) {
 	in := make(chan interface{})
 	out := make(chan interface{})
-
+	errChan := make(chan error)
 	source := ext.NewChanSource(in)
-	flow1 := flow.NewMap(toUpper, 1)
-	filter := flow.NewFilter(filterA, 1)
+	flow1 := flow.NewMap(toUpper, 1, errChan)
+	filter := flow.NewFilter(filterA, 1, errChan)
 	sink := ext.NewChanSink(out)
 
 	var _input = []string{"a", "b", "c"}

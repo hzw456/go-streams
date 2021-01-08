@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/gorilla/websocket"
 	"github.com/hzw456/go-streams"
@@ -24,34 +25,35 @@ type WebSocketSource struct {
 	ctx        context.Context
 	connection *websocket.Conn
 	out        chan interface{}
-	errs       chan error
+	errsChan   chan error
 }
 
 // NewWebSocketSource returns a new WebSocketSource instance
-func NewWebSocketSource(ctx context.Context, url string) (*WebSocketSource, chan error, error) {
-	return NewWebSocketSourceWithDialer(ctx, url, websocket.DefaultDialer)
+func NewWebSocketSource(ctx context.Context, url string, errsChan chan error) (*WebSocketSource, error) {
+	return NewWebSocketSourceWithDialer(ctx, url, websocket.DefaultDialer, errsChan)
 }
 
 // NewWebSocketSourceWithDialer returns a new WebSocketSource instance
-func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSource, chan error, error) {
+func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer, errsChan chan error) (*WebSocketSource, error) {
 	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	source := &WebSocketSource{
 		ctx:        ctx,
 		connection: conn,
 		out:        make(chan interface{}),
+		errsChan:   errsChan,
 	}
 	go source.init()
-	return source, source.errs, nil
+	return source, nil
 }
 
 // init starts the main loop
 func (wsock *WebSocketSource) init() {
 	sigchan := make(chan os.Signal, 1)
 	signal.Notify(sigchan, syscall.SIGINT, syscall.SIGTERM)
-
+	retry := 0
 loop:
 	for {
 		select {
@@ -63,8 +65,14 @@ loop:
 			t, msg, err := wsock.connection.ReadMessage()
 			if err != nil {
 				log.Printf("Error on ws ReadMessage: %v", err)
-				wsock.errs <- err
+				retry++
+				if retry >= 5 {
+					wsock.errsChan <- err
+					break loop
+				}
+				time.Sleep(1 * time.Second)
 			} else {
+				retry = 0
 				wsock.out <- Message{
 					MsgType: t,
 					Payload: msg,
@@ -98,29 +106,27 @@ type WebSocketSink struct {
 	ctx        context.Context
 	connection *websocket.Conn
 	in         chan interface{}
-	errs       chan error
 }
 
 // NewWebSocketSink returns a new WebSocketSink instance
-func NewWebSocketSink(ctx context.Context, url string) (*WebSocketSink, chan error, error) {
+func NewWebSocketSink(ctx context.Context, url string) (*WebSocketSink, error) {
 	return NewWebSocketSinkWithDialer(ctx, url, websocket.DefaultDialer)
 }
 
 // NewWebSocketSinkWithDialer returns a new WebSocketSink instance
-func NewWebSocketSinkWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSink, chan error, error) {
+func NewWebSocketSinkWithDialer(ctx context.Context, url string, dialer *websocket.Dialer) (*WebSocketSink, error) {
 	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 
 	sink := &WebSocketSink{
 		ctx:        ctx,
 		connection: conn,
 		in:         make(chan interface{}),
-		errs:       make(chan error),
 	}
 	go sink.init()
-	return sink, sink.errs, nil
+	return sink, nil
 }
 
 // init starts the main loop
