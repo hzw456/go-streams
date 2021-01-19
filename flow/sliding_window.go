@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/hzw456/go-streams"
-	"github.com/hzw456/go-streams/utils"
+	"github.com/hzw456/go-streams/util"
 )
 
 // SlidingWindow assigns elements to windows of fixed length configured by the window size parameter.
@@ -90,7 +90,7 @@ func (sw *SlidingWindow) transmit(inlet streams.Inlet) {
 // return the system clock time otherwise
 func (sw *SlidingWindow) timestamp(elem interface{}) int64 {
 	if sw.timestampExtractor == nil {
-		return utils.NowNano()
+		return util.NowNano()
 	}
 	return sw.timestampExtractor(elem)
 }
@@ -114,7 +114,7 @@ func (sw *SlidingWindow) emit() {
 			sw.Lock()
 			// build a window slice and send it to the out chan
 			var windowBottomIndex int
-			now := utils.NowNano()
+			now := util.NowNano()
 			windowUpperIndex := sw.queue.Len()
 			slideUpperIndex := windowUpperIndex
 			slideUpperTime := now - sw.size.Nanoseconds() + sw.slide.Nanoseconds()
