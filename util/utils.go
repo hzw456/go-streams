@@ -1,9 +1,15 @@
-package util
+package utils
 
 import (
+	"context"
 	"hash/fnv"
 	"time"
 )
+
+type ErrorWithCtx struct {
+	ctx context.Context
+	err error
+}
 
 // Check error
 func Check(e error) {
