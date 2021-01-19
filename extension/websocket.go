@@ -2,7 +2,7 @@ package extension
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -67,7 +67,7 @@ loop:
 			if err != nil {
 				retry++
 				if retry >= 5 {
-					wsock.errsChan <- errors.New("Error on ws ReadMessage: err=%v url=%v", err, wsock.connection.LocalAddr().String())
+					wsock.errsChan <- fmt.Errorf("Error on ws ReadMessage: err=%v url=%v", err, wsock.connection.LocalAddr().String())
 					break loop
 				}
 				time.Sleep(3 * time.Second)
