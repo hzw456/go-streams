@@ -51,7 +51,7 @@ func deferClose(in chan interface{}, d time.Duration) {
 func TestFlow(t *testing.T) {
 	in := make(chan interface{})
 	out := make(chan interface{})
-	errChan := make(chan error)
+	errChan := make(chan Error)
 	source := ext.NewChanSource(in)
 	flow1 := flow.NewMap(toUpper, 1, errChan)
 	flow2 := flow.NewFlatMap(appendAsterix, 1, errChan)
@@ -85,7 +85,7 @@ func TestFlow(t *testing.T) {
 func TestFlowUtil(t *testing.T) {
 	in := make(chan interface{})
 	out := make(chan interface{})
-	errChan := make(chan error)
+	errChan := make(chan Error)
 	source := ext.NewChanSource(in)
 	flow1 := flow.NewMap(toUpper, 1, errChan)
 	filter := flow.NewFilter(filterA, 1, errChan)

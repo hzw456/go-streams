@@ -21,21 +21,26 @@ type Message struct {
 	Payload []byte
 }
 
+type Error struct {
+	ctx context.Context
+	e   error
+}
+
 // WebSocketSource connector
 type WebSocketSource struct {
 	ctx        context.Context
 	connection *websocket.Conn
 	out        chan interface{}
-	errsChan   chan error
+	errsChan   chan Error
 }
 
 // NewWebSocketSource returns a new WebSocketSource instance
-func NewWebSocketSource(ctx context.Context, url string, errsChan chan error) (*WebSocketSource, error) {
+func NewWebSocketSource(ctx context.Context, url string, errsChan chan Error) (*WebSocketSource, error) {
 	return NewWebSocketSourceWithDialer(ctx, url, websocket.DefaultDialer, errsChan)
 }
 
 // NewWebSocketSourceWithDialer returns a new WebSocketSource instance
-func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer, errsChan chan error) (*WebSocketSource, error) {
+func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer, errsChan chan Error) (*WebSocketSource, error) {
 	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
 		return nil, err

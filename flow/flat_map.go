@@ -19,7 +19,7 @@ type FlatMap struct {
 	in          chan interface{}
 	out         chan interface{}
 	parallelism uint
-	errChan     chan error
+	errChan     chan Error
 }
 
 // Verify FlatMap satisfies the Flow interface.
@@ -28,7 +28,7 @@ var _ streams.Flow = (*FlatMap)(nil)
 // NewFlatMap returns a new FlatMap instance.
 // flatMapFunc is the FlatMap transformation function.
 // parallelism is the flow parallelism factor. In case the events order matters, use parallelism = 1.
-func NewFlatMap(flatMapFunc FlatMapFunc, parallelism uint, errChan chan error) *FlatMap {
+func NewFlatMap(flatMapFunc FlatMapFunc, parallelism uint, errChan chan Error) *FlatMap {
 	flatMap := &FlatMap{
 		flatMapFunc,
 		make(chan interface{}),

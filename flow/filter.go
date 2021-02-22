@@ -21,7 +21,7 @@ type Filter struct {
 	in          chan interface{}
 	out         chan interface{}
 	parallelism uint
-	ErrChan     chan error
+	ErrChan     chan Error
 }
 
 // Verify Filter satisfies the Flow interface.
@@ -30,7 +30,7 @@ var _ streams.Flow = (*Filter)(nil)
 // NewFilter returns a new Filter instance.
 // filterFunc is the filter predicate function.
 // parallelism is the flow parallelism factor. In case the events order matters, use parallelism = 1.
-func NewFilter(filterFunc FilterFunc, parallelism uint, errChan chan error) *Filter {
+func NewFilter(filterFunc FilterFunc, parallelism uint, errChan chan Error) *Filter {
 	filter := &Filter{
 		filterFunc,
 		make(chan interface{}),
