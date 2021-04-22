@@ -75,7 +75,7 @@ func (fm *FlatMap) doStream() {
 		go func(e interface{}) {
 			defer func() { <-sem }()
 			trans, err := fm.FlatMapF(e)
-			if err.FlowErr != nil {
+			if err != nil {
 				fm.errChan <- err
 				return
 			}

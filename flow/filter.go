@@ -78,7 +78,7 @@ func (f *Filter) doStream() {
 		go func(e interface{}) {
 			defer func() { <-sem }()
 			ok, err := f.FilterF(e)
-			if err.FlowErr != nil {
+			if err != nil {
 				f.ErrChan <- err
 				return
 			}

@@ -75,7 +75,7 @@ func (m *Map) doStream() {
 		go func(e interface{}) {
 			defer func() { <-sem }()
 			trans, err := m.MapF(e)
-			if err.FlowErr != nil {
+			if err != nil {
 				m.errChan <- err
 				return
 			}
