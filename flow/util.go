@@ -1,10 +1,16 @@
 package flow
 
 import (
+	"context"
 	"sync"
 
 	"github.com/hzw456/go-streams"
 )
+
+type Error struct {
+	ctx context.Context
+	e   error
+}
 
 // DoStream streams data from the outlet to inlet.
 func DoStream(outlet streams.Outlet, inlet streams.Inlet) {

@@ -19,7 +19,7 @@ type Map struct {
 	in          chan interface{}
 	out         chan interface{}
 	parallelism uint
-	errChan     chan Error
+	errChan     chan flow.Error
 }
 
 // Verify Map satisfies the Flow interface.
@@ -28,7 +28,7 @@ var _ streams.Flow = (*Map)(nil)
 // NewMap returns a new Map instance.
 // mapFunc is the Map transformation function.
 // parallelism is the flow parallelism factor. In case the events order matters, use parallelism = 1.
-func NewMap(mapFunc MapFunc, parallelism uint, errChan chan Error) *Map {
+func NewMap(mapFunc MapFunc, parallelism uint, errChan chan flow.Error) *Map {
 	_map := &Map{
 		mapFunc,
 		make(chan interface{}),
