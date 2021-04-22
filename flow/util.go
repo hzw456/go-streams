@@ -8,8 +8,8 @@ import (
 )
 
 type Error struct {
-	ctx context.Context
-	e   error
+	Ctx     context.Context
+	FlowErr error
 }
 
 // DoStream streams data from the outlet to inlet.

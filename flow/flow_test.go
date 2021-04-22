@@ -13,12 +13,12 @@ import (
 	"github.com/hzw456/go-streams/util"
 )
 
-var toUpper = func(in interface{}) (interface{}, error) {
+var toUpper = func(in interface{}) (interface{}, *flow.Error) {
 	msg := in.(string)
 	return strings.ToUpper(msg), nil
 }
 
-var appendAsterix = func(in interface{}) ([]interface{}, error) {
+var appendAsterix = func(in interface{}) ([]interface{}, *flow.Error) {
 	arr := in.([]interface{})
 	rt := make([]interface{}, len(arr))
 	for i, item := range arr {
@@ -28,11 +28,11 @@ var appendAsterix = func(in interface{}) ([]interface{}, error) {
 	return rt, nil
 }
 
-var flatten = func(in interface{}) ([]interface{}, error) {
+var flatten = func(in interface{}) ([]interface{}, *flow.Error) {
 	return in.([]interface{}), nil
 }
 
-var filterA = func(in interface{}) (bool, error) {
+var filterA = func(in interface{}) (bool, *flow.Error) {
 	msg := in.(string)
 	return msg != "a", nil
 }
@@ -51,7 +51,7 @@ func deferClose(in chan interface{}, d time.Duration) {
 func TestFlow(t *testing.T) {
 	in := make(chan interface{})
 	out := make(chan interface{})
-	errChan := make(chan flow.Error)
+	errChan := make(chan *flow.Error)
 	source := ext.NewChanSource(in)
 	flow1 := flow.NewMap(toUpper, 1, errChan)
 	flow2 := flow.NewFlatMap(appendAsterix, 1, errChan)
@@ -85,7 +85,7 @@ func TestFlow(t *testing.T) {
 func TestFlowUtil(t *testing.T) {
 	in := make(chan interface{})
 	out := make(chan interface{})
-	errChan := make(chan flow.Error)
+	errChan := make(chan *flow.Error)
 	source := ext.NewChanSource(in)
 	flow1 := flow.NewMap(toUpper, 1, errChan)
 	filter := flow.NewFilter(filterA, 1, errChan)

@@ -26,16 +26,16 @@ type WebSocketSource struct {
 	ctx        context.Context
 	connection *websocket.Conn
 	out        chan interface{}
-	errsChan   chan flow.Error
+	errsChan   chan *flow.Error
 }
 
 // NewWebSocketSource returns a new WebSocketSource instance
-func NewWebSocketSource(ctx context.Context, url string, errsChan chan flow.Error) (*WebSocketSource, error) {
+func NewWebSocketSource(ctx context.Context, url string, errsChan chan *flow.Error) (*WebSocketSource, error) {
 	return NewWebSocketSourceWithDialer(ctx, url, websocket.DefaultDialer, errsChan)
 }
 
 // NewWebSocketSourceWithDialer returns a new WebSocketSource instance
-func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer, errsChan chan flow.Error) (*WebSocketSource, error) {
+func NewWebSocketSourceWithDialer(ctx context.Context, url string, dialer *websocket.Dialer, errsChan chan *flow.Error) (*WebSocketSource, error) {
 	conn, _, err := dialer.Dial(url, nil)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ loop:
 			if err != nil {
 				retry++
 				if retry >= 5 {
-					wsock.errsChan <- fmt.Errorf("Error on ws ReadMessage: err=%v url=%v", err, wsock.connection.LocalAddr().String())
+					wsock.errsChan <- &flow.Error{wsock.ctx, fmt.Errorf("Error on ws ReadMessage: err=%v url=%v", err, wsock.connection.LocalAddr().String())}
 					break loop
 				}
 				time.Sleep(3 * time.Second)
