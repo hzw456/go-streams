@@ -179,8 +179,8 @@ func (handler *GroupHandler) ConsumeClaim(session sarama.ConsumerGroupSession, c
 		select {
 		case message := <-claim.Messages():
 			if message != nil {
-				log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s",
-					string(message.Value), message.Timestamp, message.Topic)
+				// log.Printf("Message claimed: value = %s, timestamp = %v, topic = %s",
+				// 	string(message.Value), message.Timestamp, message.Topic)
 				session.MarkMessage(message, "")
 				handler.out <- message
 			}
