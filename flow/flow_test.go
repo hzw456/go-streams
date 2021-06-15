@@ -2,6 +2,9 @@ package flow_test
 
 import (
 	"container/heap"
+	"context"
+	"errors"
+	"fmt"
 	"reflect"
 	"sort"
 	"strings"
@@ -33,7 +36,10 @@ var flatten = func(in interface{}) ([]interface{}, *flow.Error) {
 }
 
 var filterA = func(in interface{}) (bool, *flow.Error) {
-	msg := in.(string)
+	msg, ok := in.(string)
+	if !ok {
+		return false, &flow.Error{context.Background(), errors.New("not string")}
+	}
 	return msg != "a", nil
 }
 
@@ -118,6 +124,46 @@ func TestQueue(t *testing.T) {
 	queue.Update(head, util.NowNano())
 	first := heap.Pop(queue).(*flow.Item)
 	assertEqual(t, first.Msg.(int), 2)
+}
+
+func TestError(t *testing.T) {
+	in := make(chan interface{})
+	out := make(chan interface{})
+	errChan := make(chan *flow.Error)
+	source := ext.NewChanSource(in)
+	flow1 := flow.NewMap(toUpper, 1, errChan)
+	filter := flow.NewFilter(filterA, 1, errChan)
+	sink := ext.NewChanSink(out)
+
+	var input = []int{1, 2, 3}
+
+	go func() {
+		for _, e := range input {
+			in <- e
+		}
+	}()
+	go deferClose(in, time.Second*1)
+
+	go source.Via(filter).Via(flow1).To(sink)
+
+	go func() {
+		for {
+			select {
+			case err := <-errChan:
+				if err != nil && err.FlowErr.Error() != "" {
+					fmt.Println(err.Ctx, err.FlowErr.Error())
+				}
+			}
+		}
+	}()
+
+	go func() {
+		for e := range sink.Out {
+			fmt.Println(e)
+		}
+	}()
+	ch := make(chan int, 1)
+	<-ch
 }
 
 func assertEqual(t *testing.T, a interface{}, b interface{}) {
